@@ -2,9 +2,9 @@
 
 # DevBits Web Search
 
-**Web search for local models in DeepSeek Harness.** Start with DuckDuckGo Instant Answers, or connect Brave, Tavily, Exa, Google, or your own SearXNG instance. Choose a provider and manage credentials in the Harness UI.
+**Web search for local models in DeepSeek Harness.** Start with DuckDuckGo Instant Answers, or connect Keenable, Brave, Tavily, Exa, Google, or your own SearXNG instance. Choose a provider and manage credentials in the Harness UI.
 
-Free and open source. No search API key is needed to get started. DuckDuckGo provides topic summaries and related links; use another provider for broader web search coverage.
+Free and open source. No search API key is needed to get started. DuckDuckGo provides topic summaries and related links; for broader web search coverage, Keenable also works without a key, or use another provider.
 
 [Installation](#install) · [Settings](docs/settings.md) · [SearXNG](docs/searxng.md) · [Troubleshooting](docs/troubleshooting.md) · [DevBits](https://devbits.xyz)
 
@@ -68,6 +68,7 @@ A successful test confirms provider access. It cannot guarantee that a particula
 | Provider | What you need | Coverage |
 | --- | --- | --- |
 | **DuckDuckGo** (default) | Nothing | Instant Answers and related links. Some queries return no results. |
+| **Keenable** | Nothing; an API key is optional | Web results with page excerpts. Without a key, searches share a per-IP limit (10 per second, 1,000 per hour); a key lifts it. |
 | **Brave Search** | API key | Web results from Brave's index. |
 | **Tavily** | API key | Web results with relevant excerpts. |
 | **Exa** | API key | Web results with page highlights. |

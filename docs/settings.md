@@ -6,7 +6,7 @@ Open **Plugins → DevBits Web Search**. Choose a provider, enter its required f
 
 Only the selected provider's controls are shown. Switching providers preserves other providers' keys and pending edits. A blank credential field keeps its saved value; use **Remove saved key** or the corresponding credential removal button to delete it on save. A saved-key indicator confirms storage, not whether the credential works or has available quota.
 
-Brave, Tavily, and Exa need their own API keys. Google also needs a search engine ID (`cx`). SearXNG needs an instance address and, if your deployment requires it, a bearer token or username and password. See [SearXNG setup](searxng.md).
+Brave, Tavily, and Exa need their own API keys. Google also needs a search engine ID (`cx`). Keenable works without a key; saving one switches to its authenticated endpoint and lifts the per-IP limit shared by keyless searches. SearXNG needs an instance address and, if your deployment requires it, a bearer token or username and password. See [SearXNG setup](searxng.md).
 
 Credentials are saved in the active Harness profile and omitted from remote settings responses. The plugin does not read credentials or provider selection from environment variables. It does not encrypt profile storage.
 
@@ -21,7 +21,7 @@ wikipedia.org
 developer.mozilla.org
 ```
 
-Each list accepts up to 100 entries. Internationalized names are normalized when saved. Checks apply to every provider's returned URLs before the result cap. Providers with supported domain parameters also receive those restrictions to improve candidate selection.
+Each list accepts up to 100 entries. Internationalized names are normalized when saved. Checks apply to every provider's returned URLs before the result cap. Providers with supported domain parameters also receive those restrictions to improve candidate selection. Keenable accepts one site, so it receives a single allowed domain; longer lists and blocked domains are applied locally.
 
 Filtering can return fewer results or none. The plugin explains when it removes candidates; it never relaxes restrictions or sends extra requests to fill the count. Rules apply to both model searches and tests. They do not restrict separate `web_fetch` requests or the destinations of redirects on external sites. Per-query filter overrides are not exposed by the native Harness tool.
 
@@ -31,9 +31,9 @@ Filtering can return fewer results or none. The plugin explains when it removes 
 | --- | --- |
 | DuckDuckGo | Any time |
 | SearXNG | Any time, past day, month, or year; support depends on upstream engines |
-| Brave, Tavily, Exa, Google | Any time, past day, week, month, or year |
+| Brave, Tavily, Exa, Keenable, Google | Any time, past day, week, month, or year |
 
-An unsupported selection is kept when switching providers and must be corrected before saving. Dates come from providers and may be estimated or reflect page updates. Tavily excludes undated results when a date range is selected. Exa sends publication-date bounds ending at the current time, with rolling 30-day months and 365-day years. Retrieval time is not publication time.
+An unsupported selection is kept when switching providers and must be corrected before saving. Dates come from providers and may be estimated or reflect page updates. Tavily excludes undated results when a date range is selected. Exa sends publication-date bounds ending at the current time, with rolling 30-day months and 365-day years. Keenable sends a publication-date lower bound with the same rolling months and years; pages without a known publication date may still be returned. Retrieval time is not publication time.
 
 ## Test search
 
@@ -54,8 +54,8 @@ One request runs at a time, with room for ten waiting requests. The timeout incl
 
 Settings changes preserve recent request history. Restarting Harness or remounting the plugin resets it. If a provider sends a `Retry-After` delay, new requests pause for that period. Failed requests are not automatically repeated, and another provider is never selected automatically.
 
-Tavily uses basic search with automatic parameter upgrades disabled. Exa uses auto search with highlights. Neither requests generated answers or full page text. Provider quotas and fees still apply, and these local limits do not cap account spending.
+Tavily uses basic search with automatic parameter upgrades disabled. Exa uses auto search with highlights. Keenable requests excerpts of about 500 characters. None of them request generated answers or full page text. Provider quotas and fees still apply, and these local limits do not cap account spending.
 
-Provider API references: [Brave](https://api-dashboard.search.brave.com/api-reference/web/search/get), [Tavily](https://docs.tavily.com/documentation/api-reference/endpoint/search), [Exa](https://exa.ai/docs/reference/search).
+Provider API references: [Brave](https://api-dashboard.search.brave.com/api-reference/web/search/get), [Tavily](https://docs.tavily.com/documentation/api-reference/endpoint/search), [Exa](https://exa.ai/docs/reference/search), [Keenable](https://docs.keenable.ai/api-reference/search).
 
 [Back to README](../README.md)

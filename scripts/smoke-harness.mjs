@@ -187,6 +187,13 @@ axios.post = async (url, body, options) => {
     assert.equal(body.max_results, 2);
     return { data: { results: [{ title: 'Tavily fixture', url: 'https://example.com/tavily', content: 'Tavily excerpt.' }] } };
   }
+  if (host === 'api.keenable.ai') {
+    assert.equal(url, 'https://api.keenable.ai/v1/search/public', 'Keenable without a saved key must use the public endpoint');
+    assert.equal(options.headers['X-Keenable-Title'], 'DevBits Web Search');
+    assert.equal(options.headers['X-API-Key'], undefined);
+    assert.equal(body.max_results, 2);
+    return { data: { results: [{ title: 'Keenable fixture', url: 'https://example.com/keenable', description: '', snippet: 'Keenable\nexcerpt.' }] } };
+  }
   assert.equal(host, 'api.exa.ai');
   assert.equal(options.headers['x-api-key'], 'fixture-exa-token');
   assert.equal(body.type, 'auto');
@@ -283,7 +290,7 @@ try {
   assert.equal(changed.meta.sources[0].url, 'https://example.com/brave', 'the next search must use the new engine');
   assert.equal(requests.length, 2);
 
-  for (const engine of ['tavily', 'exa']) {
+  for (const engine of ['tavily', 'exa', 'keenable']) {
     await settings.update(entryId, { defaultEngine: engine });
     assert.equal(entry.fiber, previousFiber, 'new engines must also apply without remounting');
     const searched = await tools.execute({
@@ -295,7 +302,7 @@ try {
     assert.equal(searched.isError, false, JSON.stringify(searched));
     assert.equal(searched.meta.sources[0].url, `https://example.com/${engine}`);
   }
-  assert.equal(requests.length, 4);
+  assert.equal(requests.length, 5);
 
   const transport = await createRpcTransport(ctx);
   const currentRevision = () => settings.describe({ redactSecrets: true }).find(form => form.ns === entryId).revision;

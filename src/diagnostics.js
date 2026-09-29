@@ -4,7 +4,7 @@ const { resultNotice } = require('./notices');
 
 const CHANNEL = '/devbits-web-search';
 const ENTRY_ID = 'devbits-web-search';
-const ENGINES = new Set(['duckduckgo', 'brave', 'tavily', 'exa', 'google', 'searxng']);
+const ENGINES = new Set(['duckduckgo', 'brave', 'tavily', 'exa', 'keenable', 'google', 'searxng']);
 const MESSAGES = {
   INVALID_FILTERS: 'Check source filters: use at most 100 hostnames per list, without URLs, paths, ports, or wildcards.',
   UNSUPPORTED_FILTER: 'The selected provider does not support this date range. Choose Any time or a supported range.',
@@ -84,7 +84,9 @@ function createDiagnostics({ settings, executeSearch, notice, now = Date.now }) 
         ? 'Could not reach the SearXNG instance. Check the address from the machine running Harness.'
         : details.engine === 'searxng' && code === 'INVALID_RESPONSE'
           ? 'The instance returned a web page or unreadable search data. Check the instance URL and JSON settings.'
-          : MESSAGES[code];
+          : details.engine === 'keenable' && code === 'RATE_LIMITED'
+            ? 'Keenable is limiting search requests. Wait before trying again. Searches without an API key share a per-IP limit; saving a Keenable API key lifts it.'
+            : MESSAGES[code];
       return { ok: false, error: { code, message, details } };
     }
   };

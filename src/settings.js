@@ -5,9 +5,9 @@ const z = require('@deepseek-ai/schemastery');
 // Volatile fields are editable through Harness settings without remounting the
 // provider. Secret fields are omitted from settings responses and stay writable.
 const Config = z.object({
-  defaultEngine: z.union(['duckduckgo', 'brave', 'tavily', 'exa', 'google', 'searxng'])
+  defaultEngine: z.union(['duckduckgo', 'brave', 'tavily', 'exa', 'keenable', 'google', 'searxng'])
     .default('duckduckgo')
-    .description('Search engine. DuckDuckGo needs no key, but returns Instant Answers and related links rather than full web search results.')
+    .description('Search engine. DuckDuckGo needs no key, but returns Instant Answers and related links rather than full web search results. Keenable returns web results without a key.')
     .volatile(),
   allowedDomains: z.string().default('').description('Only return these hostnames and their subdomains. Separate with commas or new lines.').volatile(),
   blockedDomains: z.string().default('').description('Never return these hostnames or their subdomains. Blocked domains take precedence.').volatile(),
@@ -42,6 +42,9 @@ const Config = z.object({
   exaApiKey: z.string().role('secret')
     .description('Exa API key. Searches use auto mode and return highlights without full page text.')
     .volatile(),
+  keenableApiKey: z.string().role('secret')
+    .description('Optional Keenable API key. Keenable searches work without one; a key lifts the shared per-IP rate limit.')
+    .volatile(),
   googleApiKey: z.string().role('secret')
     .description('Google Custom Search JSON API key for an existing eligible account.')
     .volatile(),
@@ -58,6 +61,7 @@ function resolveConfig(config = {}) {
   const braveApiKey = read(config.braveApiKey);
   const tavilyApiKey = read(config.tavilyApiKey);
   const exaApiKey = read(config.exaApiKey);
+  const keenableApiKey = read(config.keenableApiKey);
   const googleApiKey = read(config.googleApiKey);
   const googleSearchEngineId = read(config.googleSearchEngineId);
 
@@ -78,6 +82,7 @@ function resolveConfig(config = {}) {
       brave: { apiKey: braveApiKey },
       tavily: { apiKey: tavilyApiKey },
       exa: { apiKey: exaApiKey },
+      keenable: { apiKey: keenableApiKey },
       google: { apiKey: googleApiKey, searchEngineId: googleSearchEngineId },
     },
   };

@@ -11,6 +11,10 @@ const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_TITLE_LENGTH = 300;
 const MAX_SNIPPET_LENGTH = 2000;
 const BING_RETIRED = 'Bing Search APIs retired on August 11, 2025. Choose duckduckgo for limited Instant Answers, or configure Brave Search in the Harness plugin settings.';
+// Keenable requires an application name on keyless requests and uses it for attribution.
+const KEENABLE_TITLE = 'DevBits Web Search';
+// Keenable excerpts are page text; ask for a search-result-sized excerpt instead of the default.
+const KEENABLE_SNIPPET_LENGTH = 500;
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -37,7 +41,7 @@ function validateTimeout(value) {
 
 function validateEngine(engine) {
   if (engine === 'bing') throw new SearchError(BING_RETIRED, { code: 'ENGINE_RETIRED', engine });
-  if (!['google', 'duckduckgo', 'brave', 'tavily', 'exa', 'searxng'].includes(engine)) {
+  if (!['google', 'duckduckgo', 'brave', 'tavily', 'exa', 'keenable', 'searxng'].includes(engine)) {
     throw invalidArgument(`Unsupported search engine: ${String(engine)}`);
   }
 }
@@ -96,6 +100,12 @@ function retryAfter(headers) {
   return Number.isSafeInteger(result) ? result : undefined;
 }
 
+/** Keenable sends page text in snippet, with line breaks; description is usually empty. */
+function keenableSnippet(item) {
+  const text = [item.snippet, item.description].find(value => typeof value === 'string' && value.trim());
+  return text ? text.replace(/\s+/gu, ' ') : '';
+}
+
 function providerFailureCode(status, payload, detail) {
   const error = isObject(payload?.error) ? payload.error : {};
   const reasons = [payload?.tag, payload?.code, error.code, error.status,
@@ -146,6 +156,11 @@ class WebSearchPlugin {
         name: 'Exa Search',
         baseUrl: 'https://api.exa.ai/search'
       },
+      keenable: {
+        name: 'Keenable',
+        baseUrl: 'https://api.keenable.ai/v1/search',
+        publicUrl: 'https://api.keenable.ai/v1/search/public'
+      },
       searxng: { name: 'SearXNG', instanceUrl: '', auth: 'none' },
       google: {
         name: 'Google Custom Search (legacy)',
@@ -166,6 +181,7 @@ class WebSearchPlugin {
       if (engine === 'searxng') engines[engine] = searxng.normalizeInstance(merged);
       else {
         merged.baseUrl = validateEndpoint(merged.baseUrl, engine);
+        if (engine === 'keenable') merged.publicUrl = validateEndpoint(merged.publicUrl, engine);
         engines[engine] = merged;
       }
     }
@@ -189,7 +205,8 @@ class WebSearchPlugin {
     const config = this.searchEngines.get(engine);
     if (engine === 'searxng') return searxng.isAvailable(config);
     if (engine === 'google') return validCredential(config.apiKey) && validCredential(config.searchEngineId);
-    return engine === 'duckduckgo' || validCredential(config.apiKey);
+    // Keenable's public endpoint needs no key; a saved key lifts its shared rate limit.
+    return engine === 'duckduckgo' || engine === 'keenable' || validCredential(config.apiKey);
   }
 
   assertReady(query, engine = this.config.defaultEngine) {
@@ -237,6 +254,7 @@ class WebSearchPlugin {
     const headers = { Accept: 'application/json' };
     let params;
     let body;
+    let endpoint = config.baseUrl;
     if (engine === 'google') {
       params = { key: config.apiKey, cx: config.searchEngineId, q: normalizedQuery, num: limit };
     } else if (engine === 'brave') {
@@ -263,6 +281,12 @@ class WebSearchPlugin {
         type: 'auto',
         contents: { highlights: true, text: false }
       };
+    } else if (engine === 'keenable') {
+      headers['Content-Type'] = 'application/json';
+      headers['X-Keenable-Title'] = KEENABLE_TITLE;
+      if (validCredential(config.apiKey)) headers['X-API-Key'] = config.apiKey;
+      else endpoint = config.publicUrl;
+      body = { query: normalizedQuery, max_results: limit, snippet_max_length: KEENABLE_SNIPPET_LENGTH };
     } else if (engine === 'searxng') {
       Object.assign(headers, searxng.headers(config));
       params = { q: normalizedQuery, format: 'json', pageno: 1, categories: 'general' };
@@ -282,8 +306,8 @@ class WebSearchPlugin {
         responseType: 'json'
       };
       response = body
-        ? await axios.post(config.baseUrl, body, transport)
-        : await axios.get(config.baseUrl, { ...transport, params });
+        ? await axios.post(endpoint, body, transport)
+        : await axios.get(endpoint, { ...transport, params });
       data = response?.data;
     } catch (error) {
       if (error?.code === 'ERR_CANCELED' || error?.name === 'AbortError') {
@@ -301,7 +325,7 @@ class WebSearchPlugin {
     const instanceResult = engine === 'searxng' ? searxng.parse(data) : null;
     const items = instanceResult ? instanceResult.items : engine === 'google' ? this.googleItems(data)
       : engine === 'brave' ? this.braveItems(data)
-        : engine === 'tavily' || engine === 'exa' ? this.contentItems(data, engine)
+        : engine === 'tavily' || engine === 'exa' || engine === 'keenable' ? this.contentItems(data, engine)
           : this.duckDuckGoItems(data);
     const seen = new Set();
     const results = [];
@@ -361,8 +385,9 @@ class WebSearchPlugin {
         title: item.title,
         url: item.url,
         snippet: engine === 'tavily' ? item.content
-          : requireArray(item.highlights, 'results[].highlights', engine)
-            .filter(highlight => typeof highlight === 'string').join('\n')
+          : engine === 'keenable' ? keenableSnippet(item)
+            : requireArray(item.highlights, 'results[].highlights', engine)
+              .filter(highlight => typeof highlight === 'string').join('\n')
       }));
   }
 
@@ -435,6 +460,9 @@ class WebSearchPlugin {
       NETWORK_ERROR: `${engine} search could not reach the provider. Check the network connection and provider availability.`,
       PROVIDER_ERROR: `${engine} search failed. Check the provider status and request settings.`
     };
+    if (engine === 'keenable' && !validCredential(this.searchEngines.get('keenable').apiKey)) {
+      messages.RATE_LIMITED += ' Searches without an API key share a per-IP limit; saving a Keenable API key lifts it.';
+    }
     if (engine === 'searxng') {
       messages.NETWORK_ERROR = 'Could not reach the SearXNG instance. Check the address from the machine running Harness.';
       messages.INVALID_RESPONSE = 'The SearXNG instance returned unreadable data. Check the instance URL and JSON output.';

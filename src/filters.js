@@ -57,6 +57,10 @@ function applyProviderFilters(engine, filters, params, body, now = Date.now()) {
       body.startPublishedDate = new Date(now - DAYS[dateRange] * 86400000).toISOString();
       body.endPublishedDate = new Date(now).toISOString();
     }
+  } else if (engine === 'keenable') {
+    // Keenable takes a single site; lists and blocks rely on the local URL checks.
+    if (allowedDomains.length === 1) body.site = allowedDomains[0];
+    if (dateRange !== 'any') body.published_after = `${DAYS[dateRange]}d`;
   } else if (engine === 'brave' || engine === 'google') {
     const sites = allowedDomains.map(domain => `site:${domain}`);
     const parts = [params.q, ...(sites.length ? [sites.length === 1 ? sites[0] : `(${sites.join(' OR ')})`] : []),

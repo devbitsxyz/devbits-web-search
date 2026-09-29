@@ -1,0 +1,99 @@
+{
+  "name": "devbits-web-search",
+  "version": "0.1.0",
+  "description": "Web search for local models in DeepSeek Harness. DuckDuckGo by default, optional SearXNG and API providers.",
+  "homepage": "https://devbits.xyz",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devbitsxyz/devbits-web-search.git"
+  },
+  "bugs": {
+    "url": "https://github.com/devbitsxyz/devbits-web-search/issues"
+  },
+  "author": {
+    "name": "DevBits",
+    "url": "https://devbits.xyz"
+  },
+  "icon": "./assets/devbits-mark.svg",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "src/plugin.js",
+  "exports": {
+    ".": "./src/plugin.js",
+    "./client": "./src/client.js",
+    "./search-client": "./src/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./locale/en.json": "./locale/en.json"
+  },
+  "files": [
+    "src/index.js",
+    "src/plugin.js",
+    "src/client.js",
+    "src/settings.js",
+    "src/request-limits.js",
+    "src/diagnostics.js",
+    "src/errors.js",
+    "src/filters.js",
+    "src/notices.js",
+    "src/providers/searxng.js",
+    "cordis.patch.yml",
+    "docs/settings.md",
+    "docs/javascript-api.md",
+    "docs/searxng.md",
+    "docs/troubleshooting.md",
+    "assets/devbits-mark.svg",
+    "locale/en.json"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-api-remotes"
+      ],
+      "external": [
+        "react",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "jest --runInBand",
+    "test:harness": "node scripts/smoke-harness.mjs",
+    "test:package": "node scripts/verify-package.mjs",
+    "prepublishOnly": "npm test && npm run test:package",
+    "test:install": "node scripts/verify-install.mjs"
+  },
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "harness",
+    "web-search",
+    "local-models",
+    "plugin",
+    "dsh-plugin",
+    "duckduckgo",
+    "searxng",
+    "devbits"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "~3.18.4"
+  },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "~3.18.4",
+    "jest": "^29.5.0"
+  }
+}

@@ -1,0 +1,37 @@
+name: Bug report
+description: Report an installation, settings, or search problem.
+body:
+  - type: markdown
+    attributes:
+      value: Do not include API keys, Harness launch tokens, private queries, or profile files. Check the troubleshooting guide before reporting a problem.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Plugin, DeepSeek Harness, Node.js, and operating system.
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Search provider
+      options:
+        - DuckDuckGo
+        - Brave Search
+        - Tavily
+        - Exa
+        - SearXNG
+        - Google Custom Search
+        - Installation problem
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: What happened?
+      description: Include steps to reproduce, expected behavior, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Test search result
+      description: If the plugin loads, run Test search and paste Copy diagnostics output or the error code. Does the same problem happen in chat?

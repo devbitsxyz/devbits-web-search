@@ -1,0 +1,10 @@
+# The base pins deepseek-official; registration alone does not select a provider.
+# A config patch replaces the object, so preserve native HTTP fetch explicitly.
+- id: web
+  config:
+    searchProvider: local-web-search
+    fetchProvider: http
+
+- insert:
+    - id: devbits-web-search
+      name: devbits-web-search

@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" role="img" aria-labelledby="title desc">
+  <title id="title">DevBits mark</title>
+  <desc id="desc">Folded green DevBits D logo with transparent background.</desc>
+
+  <defs>
+    <linearGradient id="dBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#61c48f"/>
+      <stop offset="55%" stop-color="#5dcc92"/>
+      <stop offset="100%" stop-color="#79ddb1"/>
+    </linearGradient>
+
+    <linearGradient id="fold" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0%" stop-color="#68c995"/>
+      <stop offset="46%" stop-color="#52c985"/>
+      <stop offset="100%" stop-color="#71ddb0"/>
+    </linearGradient>
+
+    <linearGradient id="foldHighlight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9ae9c2" stop-opacity=".75"/>
+      <stop offset="100%" stop-color="#5ed39c" stop-opacity=".10"/>
+    </linearGradient>
+
+    <linearGradient id="backFold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#123b31" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="#071813" stop-opacity=".82"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="170%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dy="3"/>
+      <feColorMatrix values="0 0 0 0 0.02
+                             0 0 0 0 0.18
+                             0 0 0 0 0.12
+                             0 0 0 .42 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <!-- Main D -->
+    <path
+      fill="url(#dBody)"
+      fill-rule="evenodd"
+      d="M12 36
+         H105
+         C151 36 180 66 180 115
+         C180 164 151 198 105 198
+         H12
+         Z
+
+         M60 82
+         V153
+         H100
+         C121 153 134 139 134 117
+         C134 95 121 82 100 82
+         Z"
+    />
+
+    <!-- Dark rear folded plane -->
+    <path
+      d="M170 88 L219 167 L112 232 L145 144 Z"
+      fill="url(#backFold)"
+    />
+
+    <!-- Diagonal folded ribbon -->
+    <path
+      d="M170 10
+         H205
+         L112 232
+         L111 196
+         L148 72
+         Z"
+      fill="url(#fold)"
+    />
+
+    <!-- Fold highlight -->
+    <path
+      d="M170 10 H205 L185 58 L157 34 Z"
+      fill="url(#foldHighlight)"
+    />
+
+    <!-- Soft overlapping face -->
+    <path
+      d="M148 72 L178 113 L112 232 L111 196 Z"
+      fill="#8be2b5"
+      opacity=".24"
+    />
+  </g>
+</svg>

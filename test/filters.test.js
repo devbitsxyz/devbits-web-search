@@ -36,7 +36,7 @@ test('filters before truncation and counts excluded unique safe candidates', asy
   expect(result.results[0].url).toBe('https://example.com/a');
   expect(axios.get).toHaveBeenCalledTimes(1);
 });
-test.each(['duckduckgo', 'brave', 'google', 'tavily', 'exa'])('enforces domains for %s even when upstream ignores them', async engine => {
+test.each(['duckduckgo', 'brave', 'google', 'tavily', 'exa', 'keenable'])('enforces domains for %s even when upstream ignores them', async engine => {
   const hit = { title: 'B', url: 'https://blocked.test', link: 'https://blocked.test', content: 'x', highlights: ['x'] };
   const data = engine === 'duckduckgo' ? { RelatedTopics: [{ FirstURL: hit.url, Text: 'x' }] }
     : engine === 'brave' ? { web: { results: [hit] } } : engine === 'google' ? { items: [hit] } : { results: [hit] };
@@ -48,7 +48,7 @@ test.each([['duckduckgo','day'], ['searxng','week']])('rejects unsupported %s da
   await expect(new Client({ defaultEngine: engine, filters: { dateRange } }).search('q')).rejects.toMatchObject({ code: 'UNSUPPORTED_FILTER' });
   expect(axios.get).not.toHaveBeenCalled(); expect(axios.post).not.toHaveBeenCalled();
 });
-test.each(['brave','google','tavily','exa'])('maps %s date and domain filters to the documented request', async engine => {
+test.each(['brave','google','tavily','exa','keenable'])('maps %s date and domain filters to the documented request', async engine => {
   const now = jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-09-29T12:00:00Z'));
   try {
     axios.get.mockResolvedValue({ data: engine === 'brave' ? { web: { results: [] } } : { items: [] } });
@@ -60,8 +60,23 @@ test.each(['brave','google','tavily','exa'])('maps %s date and domain filters to
         ...(engine === 'brave' ? { freshness: 'pw' } : { dateRestrict: 'w1' }) });
     } else if (engine === 'tavily') expect(axios.post.mock.calls[0][1]).toMatchObject({ time_range: 'week', filter_by_published_date: true,
       include_domains: ['example.com'], exclude_domains: ['ads.example.com'], include_domains_mode: 'restrict', auto_parameters: false });
-    else expect(axios.post.mock.calls[0][1]).toMatchObject({ startPublishedDate: '2026-09-22T12:00:00.000Z', endPublishedDate: '2026-09-29T12:00:00.000Z', includeDomains: ['example.com'], excludeDomains: ['ads.example.com'] });
+    else if (engine === 'exa') expect(axios.post.mock.calls[0][1]).toMatchObject({ startPublishedDate: '2026-09-22T12:00:00.000Z', endPublishedDate: '2026-09-29T12:00:00.000Z', includeDomains: ['example.com'], excludeDomains: ['ads.example.com'] });
+    else expect(axios.post.mock.calls[0][1]).toEqual({ query: 'q', max_results: 8, snippet_max_length: 500, site: 'example.com', published_after: '7d' });
   } finally { now.mockRestore(); }
+});
+test('sends Keenable one site only, and enforces longer lists and every range locally', async () => {
+  axios.post.mockResolvedValue({ data: { results: [
+    { title: 'A', url: 'https://example.com/a', snippet: 'a' },
+    { title: 'B', url: 'https://example.org/b', snippet: 'b' },
+    { title: 'C', url: 'https://other.test/c', snippet: 'c' },
+  ] } });
+  const result = await new Client({ defaultEngine: 'keenable', filters: { allowedDomains: 'example.com, example.org', dateRange: 'year' } }).search('q');
+  expect(axios.post.mock.calls[0][1]).toEqual({ query: 'q', max_results: 8, snippet_max_length: 500, published_after: '365d' });
+  expect(result).toMatchObject({ count: 2, filteredCount: 1 });
+  for (const [dateRange, value] of [['day', '1d'], ['month', '30d']]) {
+    await new Client({ defaultEngine: 'keenable', filters: { dateRange } }).search('q');
+    expect(axios.post.mock.lastCall[1].published_after).toBe(value);
+  }
 });
 test('includes generated site operators in Brave query limit validation', async () => {
   const client = new Client({ defaultEngine: 'brave', engines: { brave: { apiKey: 'key' } }, filters: { allowedDomains: 'example.com' } });

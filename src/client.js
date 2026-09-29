@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     const { Button, Input } = require('@deepseek-ai/dsh-client-ui-primitives');
     const h = React.createElement;
     const ENTRY_ID = 'devbits-web-search';
-    const secretFields = ['braveApiKey', 'googleApiKey', 'tavilyApiKey', 'exaApiKey', 'searxngToken', 'searxngUsername', 'searxngPassword'];
+    const secretFields = ['braveApiKey', 'googleApiKey', 'tavilyApiKey', 'exaApiKey', 'keenableApiKey', 'searxngToken', 'searxngUsername', 'searxngPassword'];
     const providers = {
       searxng: { name: 'SearXNG' },
       duckduckgo: { name: 'DuckDuckGo Instant Answers' },
@@ -30,6 +30,12 @@ window.__ModuleLoader__.load({
         description: 'Web results with page highlights, using Exa’s standard auto search. Requires an Exa API key.',
         setup: 'https://dashboard.exa.ai/api-keys',
         docs: 'https://exa.ai/docs/reference/search',
+      },
+      keenable: {
+        name: 'Keenable', field: 'keenableApiKey', keyLabel: 'Keenable API key (optional)', optional: true,
+        description: 'Web results with page excerpts. Works without an API key; without one, searches share a per-IP rate limit, and a key lifts it.',
+        setup: 'https://app.keenable.ai/console',
+        docs: 'https://docs.keenable.ai/api-reference/search',
       },
     };
     const formStyle = { display: 'grid', gap: 20, maxWidth: 640, minWidth: 0 };
@@ -68,6 +74,7 @@ window.__ModuleLoader__.load({
         googleApiKey: '',
         tavilyApiKey: '',
         exaApiKey: '',
+        keenableApiKey: '',
       };
     }
 
@@ -455,6 +462,7 @@ window.__ModuleLoader__.load({
           onChange: (event) => edit(field, event.target.value), ...props,
         }),
         hint && h('p', { style: hintStyle }, hint));
+      const optionalKey = (field) => Object.values(providers).some((entry) => entry.field === field && entry.optional);
       const secretField = (field, label) => h('div', { style: fieldStyle, key: field },
         h('label', { htmlFor: `web-search-${field}` }, label),
         h(Input, {
@@ -462,14 +470,15 @@ window.__ModuleLoader__.load({
           autoComplete: 'new-password', spellCheck: false,
           placeholder: field.startsWith('searxng') ? (savedKey(field) ? 'Leave blank to keep the saved value' : `Enter ${label.toLowerCase()}`) : phase === 'refresh-failed' ? 'Reload to confirm the saved key'
             : cleared[field] ? 'Key will be removed when you save'
-            : savedKey(field) ? 'Leave blank to keep the saved key' : 'Enter an API key',
+            : savedKey(field) ? 'Leave blank to keep the saved key' : optionalKey(field) ? 'Optional' : 'Enter an API key',
           onChange: (event) => edit(field, event.target.value),
         }),
         h('div', { style: rowStyle },
           h('span', { style: hintStyle }, field.startsWith('searxng') ? (cleared[field] ? 'This credential will be removed on save.' : 'Saved values stay hidden. Leave blank to keep them.') : phase === 'refresh-failed' ? 'Reload settings to refresh the saved key status.'
             : cleared[field] ? 'The saved key will be removed on save.'
             : draft[field].trim() ? 'New key entered. Save changes to use it.'
-              : savedKey(field) ? 'Leave blank to keep your saved key.' : 'A key is required for this provider.'),
+              : savedKey(field) ? 'Leave blank to keep your saved key.'
+                : optionalKey(field) ? 'Optional. Searches work without a key.' : 'A key is required for this provider.'),
           phase !== 'refresh-failed' && savedKey(field) && h(Button, {
             type: 'button', variant: 'outline', size: 'sm', disabled,
             onClick: () => {
@@ -505,7 +514,7 @@ window.__ModuleLoader__.load({
             || draft.googleSearchEngineId.trim() !== (descriptor?.value?.googleSearchEngineId ?? '').trim();
           return newConfig ? 'Configuration entered — save to use' : 'Configuration saved';
         }
-        if (!configured(provider.field)) return 'API key required';
+        if (!configured(provider.field)) return provider.optional ? 'No API key needed' : 'API key required';
         return draft[provider.field].trim() ? 'API key entered — save to use' : 'API key saved';
       })();
       const timeoutMs = Number(draft.timeoutMs);
@@ -527,6 +536,7 @@ window.__ModuleLoader__.load({
             onChange: (event) => edit('defaultEngine', event.target.value),
           },
           h('option', { value: 'duckduckgo' }, 'DuckDuckGo — no API key'),
+          h('option', { value: 'keenable' }, 'Keenable — API key optional'),
           h('option', { value: 'brave' }, 'Brave Search'),
           h('option', { value: 'tavily' }, 'Tavily'),
           h('option', { value: 'exa' }, 'Exa'),

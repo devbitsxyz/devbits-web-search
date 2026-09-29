@@ -69,6 +69,14 @@ describe('saved-configuration search diagnostics', () => {
     expect(JSON.stringify(result)).not.toMatch(/secret-token|private query|Authorization/);
   });
 
+  test('explains a Keenable rate limit with a fixed message that mentions the optional key', async () => {
+    executeSearch.mockRejectedValueOnce(Object.assign(new Error('private detail'), { code: 'RATE_LIMITED', engine: 'keenable', status: 429, retryAfterMs: 120000 }));
+    const result = await handler('test-search', { query: 'private query', revision });
+    expect(result).toMatchObject({ ok: false, error: { code: 'RATE_LIMITED', details: { engine: 'keenable', status: 429, retryAfterMs: 120000 } } });
+    expect(result.error.message).toContain('saving a Keenable API key lifts it');
+    expect(JSON.stringify(result)).not.toMatch(/private/);
+  });
+
   test('sanitizes unknown failure codes and unavailable settings', async () => {
     executeSearch.mockRejectedValueOnce({ code: 'private-code', status: 999, engine: 'private-engine' });
     const result = await handler('test-search', { query: 'x', revision });

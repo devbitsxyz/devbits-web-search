@@ -8,9 +8,10 @@ const googleConfig = { apiKey: 'google-secret', searchEngineId: 'test-cx' };
 const braveConfig = { apiKey: 'brave-secret' };
 const tavilyConfig = { apiKey: 'tavily-secret' };
 const exaConfig = { apiKey: 'exa-secret' };
+const keenableConfig = { apiKey: 'keenable-secret' };
 
 function client(config = {}) {
-  return new WebSearchPlugin({ engines: { google: googleConfig, brave: braveConfig, tavily: tavilyConfig, exa: exaConfig }, ...config });
+  return new WebSearchPlugin({ engines: { google: googleConfig, brave: braveConfig, tavily: tavilyConfig, exa: exaConfig, keenable: keenableConfig }, ...config });
 }
 
 beforeEach(() => {
@@ -25,9 +26,10 @@ describe('configuration and availability', () => {
     expect(plugin.isAvailable('brave')).toBe(false);
     expect(plugin.isAvailable('tavily')).toBe(false);
     expect(plugin.isAvailable('exa')).toBe(false);
+    expect(plugin.isAvailable('keenable')).toBe(true);
     expect(plugin.isAvailable('google')).toBe(false);
     expect(plugin.isAvailable('bing')).toBe(false);
-    expect(plugin.getSupportedEngines()).toEqual(['duckduckgo', 'brave', 'tavily', 'exa', 'searxng', 'google']);
+    expect(plugin.getSupportedEngines()).toEqual(['duckduckgo', 'brave', 'tavily', 'exa', 'keenable', 'searxng', 'google']);
   });
 
   test('merges per-provider credentials without losing endpoint defaults or other providers', () => {
@@ -127,7 +129,7 @@ describe('authenticated POST search providers', () => {
     expect(axios.get).not.toHaveBeenCalled();
   });
 
-  test.each(['tavily', 'exa'])('accepts an empty %s result set', async engine => {
+  test.each(['tavily', 'exa', 'keenable'])('accepts an empty %s result set', async engine => {
     axios.post.mockResolvedValue({ data: { results: [] } });
     await expect(client().search('test query', { engine })).resolves.toMatchObject({ count: 0, results: [], truncated: false });
   });
@@ -135,18 +137,19 @@ describe('authenticated POST search providers', () => {
   test.each([
     ['tavily', {}], ['tavily', { results: null }], ['tavily', { results: {} }], ['tavily', '<html>error</html>'],
     ['exa', {}], ['exa', { results: null }], ['exa', { results: {} }], ['exa', '<html>error</html>'],
-    ['exa', { results: [{ title: 'Broken', url: 'https://example.com/', highlights: 'not an array' }] }]
+    ['exa', { results: [{ title: 'Broken', url: 'https://example.com/', highlights: 'not an array' }] }],
+    ['keenable', {}], ['keenable', { results: null }], ['keenable', { results: {} }], ['keenable', '<html>error</html>']
   ])('rejects malformed %s results %p', async (engine, data) => {
     axios.post.mockResolvedValue({ data });
     await expect(client().search('test query', { engine })).rejects.toMatchObject({ code: 'INVALID_RESPONSE', engine });
   });
 
-  test.each(['tavily', 'exa'])('applies URL filtering, text bounds, and result caps to %s', async engine => {
+  test.each(['tavily', 'exa', 'keenable'])('applies URL filtering, text bounds, and result caps to %s', async engine => {
     axios.post.mockResolvedValue({ data: { results: [
-      { title: 'Bad', url: 'javascript:alert(1)', content: 'bad', highlights: ['bad'] },
-      { title: 'a'.repeat(500), url: 'https://example.com/valid', content: 'b'.repeat(3000), highlights: ['b'.repeat(3000)] },
-      { title: 'Duplicate', url: 'https://example.com/valid', content: 'duplicate', highlights: ['duplicate'] },
-      { title: 'Extra', url: 'https://example.com/extra', content: 'extra', highlights: ['extra'] }
+      { title: 'Bad', url: 'javascript:alert(1)', content: 'bad', highlights: ['bad'], snippet: 'bad' },
+      { title: 'a'.repeat(500), url: 'https://example.com/valid', content: 'b'.repeat(3000), highlights: ['b'.repeat(3000)], snippet: 'b'.repeat(3000) },
+      { title: 'Duplicate', url: 'https://example.com/valid', content: 'duplicate', highlights: ['duplicate'], snippet: 'duplicate' },
+      { title: 'Extra', url: 'https://example.com/extra', content: 'extra', highlights: ['extra'], snippet: 'extra' }
     ] } });
     const result = await client().search('test query', { engine, num: 1 });
     expect(result.count).toBe(1);
@@ -183,11 +186,99 @@ describe('authenticated POST search providers', () => {
     await expect(client().search('query', { engine: 'tavily' })).rejects.toMatchObject({ code: 'PROVIDER_ERROR' });
   });
 
-  test.each(['tavily', 'exa'])('keeps cancellation safe for %s POST requests', async engine => {
+  test.each(['tavily', 'exa', 'keenable'])('keeps cancellation safe for %s POST requests', async engine => {
     axios.post.mockRejectedValue({ code: 'ERR_CANCELED', config: { headers: { Authorization: `${engine}-secret` } } });
     const promise = client().search('query', { engine });
     await expect(promise).rejects.toMatchObject({ code: 'ERR_CANCELED', name: 'CanceledError', __CANCEL__: true });
     await promise.catch(error => expect(inspect(error, { depth: null })).not.toContain(`${engine}-secret`));
+  });
+});
+
+describe('Keenable', () => {
+  // Real responses carry page text in snippet, with line breaks, and an empty description.
+  const keenableData = { query: 'test query', mode: 'pro', results: [
+    { title: 'Keenable result', url: 'https://example.com/keenable', description: '', snippet: 'First line\n\nsecond  line', acquired_at: '2026-09-28T12:00:00Z' },
+    { title: 'Description only', url: 'https://example.com/description', description: 'Short summary', snippet: '' },
+    { title: 'No excerpt', url: 'https://example.com/no-excerpt' }
+  ] };
+
+  test('searches the public endpoint without a key, naming the application', async () => {
+    const signal = new AbortController().signal;
+    axios.post.mockResolvedValue({ data: keenableData });
+    const result = await new WebSearchPlugin().search(' test query ', { engine: 'keenable', num: 3, signal });
+    expect(axios.post).toHaveBeenCalledWith('https://api.keenable.ai/v1/search/public', {
+      query: 'test query', max_results: 3, snippet_max_length: 500
+    }, {
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Keenable-Title': 'DevBits Web Search' },
+      timeout: 15000, signal, maxContentLength: 2 * 1024 * 1024, maxRedirects: 0, responseType: 'json'
+    });
+    expect(result).toEqual({ query: 'test query', engine: 'keenable', count: 3, truncated: false, results: [
+      { title: 'Keenable result', url: 'https://example.com/keenable', snippet: 'First line second line', engine: 'keenable' },
+      { title: 'Description only', url: 'https://example.com/description', snippet: 'Short summary', engine: 'keenable' },
+      { title: 'No excerpt', url: 'https://example.com/no-excerpt', snippet: '', engine: 'keenable' }
+    ] });
+    expect(axios.get).not.toHaveBeenCalled();
+  });
+
+  test('uses the authenticated endpoint when a key is saved', async () => {
+    axios.post.mockResolvedValue({ data: keenableData });
+    await client().search('test query', { engine: 'keenable', num: 2 });
+    expect(axios.post.mock.calls[0][0]).toBe('https://api.keenable.ai/v1/search');
+    expect(axios.post.mock.calls[0][2].headers).toEqual({ Accept: 'application/json', 'Content-Type': 'application/json',
+      'X-Keenable-Title': 'DevBits Web Search', 'X-API-Key': 'keenable-secret' });
+  });
+
+  test.each([undefined, '', '  '])('treats key %p as keyless', async apiKey => {
+    axios.post.mockResolvedValue({ data: { results: [] } });
+    const plugin = new WebSearchPlugin({ defaultEngine: 'keenable', engines: { keenable: { apiKey } } });
+    expect(plugin.isAvailable()).toBe(true);
+    await plugin.search('query');
+    expect(axios.post.mock.calls[0][0]).toBe('https://api.keenable.ai/v1/search/public');
+    expect(axios.post.mock.calls[0][2].headers).not.toHaveProperty('X-API-Key');
+  });
+
+  test('ignores a key in the environment', async () => {
+    const previous = { ...process.env };
+    try {
+      process.env.KEENABLE_API_KEY = 'environment-keenable-key';
+      axios.post.mockResolvedValue({ data: { results: [] } });
+      await new WebSearchPlugin({ defaultEngine: 'keenable' }).search('query');
+      expect(axios.post.mock.calls[0][0]).toBe('https://api.keenable.ai/v1/search/public');
+      expect(JSON.stringify(axios.post.mock.calls[0])).not.toContain('environment-keenable-key');
+    } finally {
+      process.env = previous;
+    }
+  });
+
+  test.each(['http://api.keenable.ai/v1/search/public', 'https://api.keenable.ai/v1/search/public?key=secret'])('rejects unsafe public endpoint %s', publicUrl => {
+    expect(() => new WebSearchPlugin({ engines: { keenable: { publicUrl } } })).toThrow('HTTPS URL');
+  });
+
+  test.each([
+    [401, { error: 'Invalid API key keenable-secret' }, 'INVALID_CREDENTIALS'],
+    [402, { error: 'Insufficient credits keenable-secret' }, 'QUOTA_EXCEEDED'],
+    [429, { error: 'Rate limit exceeded keenable-secret', retryAfter: 30 }, 'RATE_LIMITED'],
+    [500, { error: 'Internal error keenable-secret' }, 'PROVIDER_ERROR']
+  ])('classifies keyed Keenable HTTP %i errors while redacting the key', async (status, data, code) => {
+    axios.post.mockRejectedValue({ response: { status, data, headers: { 'retry-after': '30' } }, config: { headers: { 'X-API-Key': 'keenable-secret' } } });
+    const promise = client().search('test query', { engine: 'keenable' });
+    await expect(promise).rejects.toMatchObject({ code, status, engine: 'keenable' });
+    await promise.catch(error => {
+      expect(error.message).toContain('[REDACTED]');
+      expect(error.message).not.toContain('per-IP limit');
+      expect(inspect(error, { depth: null })).not.toContain('keenable-secret');
+    });
+  });
+
+  test('points a keyless rate limit at the optional key', async () => {
+    axios.post.mockRejectedValue({ response: { status: 429, headers: { 'retry-after': '120' },
+      data: { error: 'Rate limit exceeded', message: 'Public API hourly limit reached.', retryAfter: 120 } } });
+    const promise = new WebSearchPlugin().search('query', { engine: 'keenable' });
+    await expect(promise).rejects.toMatchObject({ code: 'RATE_LIMITED', status: 429, retryAfterMs: 120000, engine: 'keenable' });
+    await promise.catch(error => {
+      expect(error.message).toContain('Wait 120 seconds');
+      expect(error.message).toContain('saving a Keenable API key lifts it');
+    });
   });
 });
 

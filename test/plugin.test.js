@@ -179,4 +179,25 @@ describe('DeepSeek Harness provider integration', () => {
     expect(registered.available()).toBe(false);
     expect(ctx.web.registerSearchProvider).toHaveBeenCalledTimes(1);
   });
+
+  test('offers Keenable without a key and picks up a saved key without remounting', async () => {
+    search.mockRestore();
+    available.mockRestore();
+    const post = jest.spyOn(axios, 'post').mockResolvedValue({ data: { results: [
+      { title: 'A source', url: 'https://example.com/source', description: '', snippet: 'Keenable\nexcerpt' }
+    ] } });
+    let keenableKey;
+    const registered = await provider({
+      defaultEngine: { get: () => 'keenable' },
+      keenableApiKey: { get: () => keenableKey }
+    });
+    expect(registered.available()).toBe(true);
+    const keyless = await registered.search({ query: 'query', maxResults: 2 });
+    expect(post.mock.calls[0][0]).toBe('https://api.keenable.ai/v1/search/public');
+    expect(keyless.sources[0].snippet).toBe('Keenable excerpt');
+    keenableKey = 'saved-keenable-key';
+    await registered.search({ query: 'query', maxResults: 2 });
+    expect(post.mock.calls[1][0]).toBe('https://api.keenable.ai/v1/search');
+    expect(post.mock.calls[1][2].headers['X-API-Key']).toBe('saved-keenable-key');
+  });
 });

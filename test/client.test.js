@@ -207,7 +207,7 @@ describe('Harness browser settings module', () => {
     expect(plugin.draftFromValues({ braveApiKey: 'saved-brave', tavilyApiKey: 'saved-tavily', exaApiKey: 'saved-exa', googleApiKey: 'saved-google', searxngToken: 'private-token', searxngUsername: 'private-user', searxngPassword: 'private-password' })).toEqual({
       defaultEngine: 'duckduckgo', timeoutMs: '15000', googleSearchEngineId: '',
       maxRequestsPerMinute: '20', minIntervalMs: '1000', maxResults: '8',
-      braveApiKey: '', tavilyApiKey: '', exaApiKey: '', googleApiKey: '',
+      braveApiKey: '', tavilyApiKey: '', exaApiKey: '', keenableApiKey: '', googleApiKey: '',
       allowedDomains: '', blockedDomains: '', dateRange: 'any', searxngInstanceUrl: '', searxngAuth: 'none',
       searxngToken: '', searxngUsername: '', searxngPassword: '',
     });
@@ -219,7 +219,7 @@ describe('Harness browser settings module', () => {
     const page = client.mount(remote, form);
     await page.settled();
     expect(page.nodes().filter((node) => node.type === 'option').map((node) => node.props.value)).toEqual(expect.arrayContaining([
-      'duckduckgo', 'brave', 'tavily', 'exa', 'google',
+      'duckduckgo', 'keenable', 'brave', 'tavily', 'exa', 'google',
     ]));
     expect(page.text()).toContain('No API key needed');
     expect(page.byId('web-search-braveApiKey')).toBeUndefined();
@@ -266,6 +266,31 @@ describe('Harness browser settings module', () => {
     expect(form.mutate.mock.calls[1][0].filter((op) => /ApiKey$/.test(op.path[0]))).toEqual([
       { op: 'set', path: [`${engine}ApiKey`], value: '' },
     ]);
+  });
+
+  test('Keenable needs no key, and its optional key saves and removes like the others', async () => {
+    const client = loadClient();
+    const { descriptor, remote, form } = fixture();
+    descriptor.secrets.push({ path: ['keenableApiKey'], set: false });
+    const page = client.mount(remote, form);
+    await page.settled();
+    page.edit('web-search-engine', 'keenable');
+    expect(page.text()).toContain('No API key needed');
+    expect(page.text()).toContain('Optional. Searches work without a key.');
+    expect(page.byId('web-search-keenableApiKey').props.placeholder).toBe('Optional');
+    const keyOps = (call) => form.mutate.mock.calls[call][0].filter((op) => /ApiKey$/.test(op.path[0]));
+    await page.save();
+    expect(descriptor.value.defaultEngine).toBe('keenable');
+    expect(keyOps(0)).toEqual([]);
+    page.edit('web-search-keenableApiKey', ' keenable-token ');
+    expect(page.text()).toContain('API key entered');
+    await page.save();
+    expect(keyOps(1)).toEqual([{ op: 'set', path: ['keenableApiKey'], value: 'keenable-token' }]);
+    expect(page.text()).toContain('API key saved');
+    page.click('Remove saved key');
+    await page.save();
+    expect(keyOps(2)).toEqual([{ op: 'set', path: ['keenableApiKey'], value: '' }]);
+    expect(page.text()).toContain('No API key needed');
   });
 
   test('explains missing credentials and updates readiness as a provider is configured', async () => {

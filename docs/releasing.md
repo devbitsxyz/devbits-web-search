@@ -22,7 +22,7 @@ The npm package is `devbits-web-search`. The source repository is [devbitsxyz/de
    ```
 
 4. Review the npm file list. It should contain the runtime source, bundle patch, package metadata, README, license, user guides, logo, and locale. Local profiles, keys, tests, screenshots, and contributor instructions should stay out of the archive. README screenshots use their GitHub URLs, so push those images before publishing.
-5. Confirm the package name, repository URL, homepage, Node requirement, peer dependency, and `publishConfig.access: public`. Check the README's installation commands against the version being released. Remove its pre-release notice only after npm publication succeeds.
+5. Confirm the package name, repository URL, homepage, Node requirement, peer dependency, and `publishConfig.access: public`. Check the README's installation commands against the version being released. Prepare the final README before packing; npm stores the README included with that version. If first publication fails, keep its public installation status clear until the package is available.
 
 `test:install` downloads dependencies into a temporary empty project, installs the packed package, and verifies its public exports without workspace dependencies. Set `DSH_RUNTIME_DIR` when running it to also exercise the installed package through native Harness loading, settings, diagnostics, and tool dispatch. Run on Node 22.12 and Node 24 before release. CI covers the unit, tarball, and clean-install checks on Node 22 and 24.
 

@@ -22,8 +22,6 @@ Free and open source. No search API key is needed to get started. DuckDuckGo pro
 
 Requires **Node.js 22.12+**, **DeepSeek Harness**, and a model that supports tool calls. Tested with Harness **0.1.7-rc.2**; its plugin APIs are still in developer preview. The plugin works with your configured model and does not need a DeepSeek model API key.
 
-> The first npm release is being prepared. Installation by package name becomes available after publication. Until then, use the GitHub option below.
-
 ### From Harness
 
 Open **Plugins → Add plugin** and enter:
@@ -35,8 +33,6 @@ devbits-web-search
 Keep **Official npm registry** selected, then click **Install → Enable now** and open **DevBits Web Search**.
 
 ![Harness confirms DevBits Web Search is installed and offers Enable now](https://raw.githubusercontent.com/devbitsxyz/devbits-web-search/main/docs/images/installation.jpg)
-
-*Installation of a local release package before npm publication.*
 
 ### From the terminal
 

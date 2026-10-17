@@ -42,6 +42,7 @@
     "docs/settings.md",
     "docs/javascript-api.md",
     "docs/searxng.md",
+    "docs/parallel-mcp.md",
     "docs/troubleshooting.md",
     "assets/devbits-mark.svg",
     "locale/en.json"

@@ -76,6 +76,8 @@ A successful test confirms provider access. It cannot guarantee that a particula
 
 Enter keys in the plugin settings, save, and run **Test search**. No environment variables are required. Paid providers may charge for API access; local request limits are not a billing cap.
 
+For an additional keyless search and page-fetching option, see [Parallel Search MCP](docs/parallel-mcp.md). This opt-in Harness connection adds separate MCP tools alongside your configured native provider.
+
 ## Privacy and limits
 
 Queries go to the selected search service, even when your model runs locally. SearXNG also forwards queries to its configured engines. Search credentials do not grant access to private websites or signed-in browser sessions.
